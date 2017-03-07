@@ -1,6 +1,6 @@
 # crymq-client
 
-TODO: Write a description here
+Pure crystal mqtt client
 
 ## Installation
 
@@ -9,7 +9,7 @@ Add this to your application's `shard.yml`:
 ```yaml
 dependencies:
   crymq-client:
-    github: [your-github-name]/crymq-client
+    github: tekjar/crymq-client
 ```
 
 ## Usage
@@ -17,8 +17,6 @@ dependencies:
 ```crystal
 require "crymq-client"
 ```
-
-TODO: Write usage instructions here
 
 ## Development
 
@@ -34,4 +32,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [[your-github-name]](https://github.com/[your-github-name]) tekjar - creator, maintainer
+- [tekjar](https://github.com/tekjar) tekjar - creator, maintainer

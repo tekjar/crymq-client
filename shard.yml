@@ -4,6 +4,10 @@ version: 0.1.0
 authors:
   - tekjar <k.teza1@gmail.com>
 
+dependencies:
+  crymq:
+    github: tekjar/crymq
+
 crystal: 0.21.0
 
 license: MIT
