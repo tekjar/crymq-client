@@ -23,12 +23,26 @@ class MqttClient
   end
 
   def connect
-    connect = Connect.new("test_id", 10_u16)
+    connect = Connect.new(@opts.client_id, @opts.keep_alive)
     @socket.write_bytes(connect, IO::ByteFormat::NetworkEndian)
   end
+
+  def listen
+    loop do
+      packet = @socket.read_bytes(Mqtt, IO::ByteFormat::NetworkEndian)
+
+      case packet
+      when Connack
+        puts packet
+      else
+        puts "Misc packet: ", packet.class
+      end
+    end
+  end
+
 end
 
 opts = MqttOptions.new("test-id").set_broker("localhost")
 client = MqttClient.new(opts)
 client.connect
-sleep 10
+client.listen
