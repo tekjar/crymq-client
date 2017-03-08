@@ -28,6 +28,14 @@ class MqttClient
   end
 
   def listen
+    spawn do
+      loop do
+        ping = Pingreq.new
+        @socket.write_bytes(ping, IO::ByteFormat::NetworkEndian)
+        sleep @opts.keep_alive * 0.9
+      end
+    end
+
     loop do
       packet = @socket.read_bytes(Mqtt, IO::ByteFormat::NetworkEndian)
 
@@ -39,7 +47,6 @@ class MqttClient
       end
     end
   end
-
 end
 
 opts = MqttOptions.new("test-id").set_broker("localhost")
