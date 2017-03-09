@@ -14,7 +14,7 @@ class MqttClient
   @initial_connect = true
   @await_pingresp = false
   @last_flush = Time.now
-  @pkid: Pkid = Pkid.new(1_u16)
+  @pkid: Pkid = Pkid.new(0_u16)
   @socket: TCPSocket
   @opts: MqttOptions
 
@@ -25,6 +25,12 @@ class MqttClient
   def connect
     connect = Connect.new(@opts.client_id, @opts.keep_alive)
     @socket.write_bytes(connect, IO::ByteFormat::NetworkEndian)
+  end
+
+  def publish(topic : String, qos : QoS, payload : Bytes)
+    next_pkid
+    publish = Publish.new(topic, qos, payload, @pkid)
+    @socket.write_bytes(publish, IO::ByteFormat::NetworkEndian)
   end
 
   def listen
@@ -47,9 +53,24 @@ class MqttClient
       end
     end
   end
+
+  def next_pkid
+    if @pkid == 65535
+      @pkid.reset
+    end
+    @pkid.next
+  end
 end
 
 opts = MqttOptions.new("test-id").set_broker("localhost")
 client = MqttClient.new(opts)
 client.connect
-client.listen
+
+spawn do
+  client.listen
+end
+
+loop do
+  client.publish("Hello world", QoS::AtleastOnce, "hello world".to_slice)
+  sleep 0.5
+end

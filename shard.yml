@@ -6,7 +6,7 @@ authors:
 
 dependencies:
   crymq:
-    github: tekjar/crymq
+    path: ../crymq
 
 crystal: 0.21.0
 
