@@ -10,6 +10,7 @@ enum MqttState
 end
 
 class MqttClient
+  @mutex = Mutex.new
   @state = MqttState::Disconnected
   @initial_connect = true
   @await_pingresp = false
@@ -19,12 +20,7 @@ class MqttClient
   @opts: MqttOptions
 
   # queues
-  # TODO: Reading and writing from 2 different threads. This is a data race
   @outgoing_pub = [] of Publish
-  @outgoing_rec = [] of Publish
-  @outgoing_rel= [] of Pkid
-  @outgoing_comp = [] of Pkid
-  @incoming_rec = [] of Publish
 
   def initialize(@opts)
     @socket = TCPSocket.new(@opts.address, @opts.port)
@@ -40,14 +36,20 @@ class MqttClient
     next_pkid
     publish = Publish.new(topic, qos, payload, @pkid)
 
-    case qos
-    when QoS::AtleastOnce
-      @outgoing_pub << publish
-    when QoS::AtmostOnce
-      @outgoing_rec << publish
+    @mutex.synchronize do
+      case qos
+      when QoS::AtleastOnce
+        @outgoing_pub << publish
+      end
     end
 
     @socket.write_bytes(publish, IO::ByteFormat::NetworkEndian)
+  end
+
+  def subscribe(topics : Array({String, QoS}))
+    next_pkid
+    subscribe = Subscribe.new(topics, @pkid)
+    @socket.write_bytes(subscribe, IO::ByteFormat::NetworkEndian)
   end
 
   def listen
@@ -67,8 +69,21 @@ class MqttClient
         puts packet
       when Puback
         pkid = packet.pkid
-        index = @outgoing_pub.index {|v| v.pkid == pkid}
-        @outgoing_pub.delete_at(index) if index
+        @mutex.synchronize do
+          index = @outgoing_pub.index {|v| v.pkid == pkid}
+          @outgoing_pub.delete_at(index) if index
+        end
+      when Publish
+        payload = packet.payload
+        qos = packet.qos
+        pkid = packet.pkid
+        puts payload
+
+        case qos
+        when QoS::AtleastOnce
+          puback = Puback.new(pkid)
+          @socket.write_bytes(puback, IO::ByteFormat::NetworkEndian)
+        end
       else
         puts "Misc packet: ", packet.class
       end
@@ -88,11 +103,12 @@ opts = MqttOptions.new("test-id").set_broker("localhost")
 client = MqttClient.new(opts)
 client.connect
 
+client.subscribe([{"hello/world", QoS::AtleastOnce}])
 spawn do
   client.listen
 end
 
-loop do
-  client.publish("Hello world", QoS::AtleastOnce, "hello world".to_slice)
-  sleep 0.5
+5.times do |i|
+  client.publish("hello/world", QoS::AtleastOnce, "hello world".to_slice)
+  sleep 5
 end
